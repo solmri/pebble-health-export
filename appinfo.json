@@ -1,0 +1,15 @@
+{
+  "uuid": "d2cb5dda-d554-47d7-bed7-357bd1685ed7",
+  "shortName": "Health Export",
+  "longName": "Pebble Health Export",
+  "companyName": "Natasha Kerensikova",
+  "versionLabel": "1.0",
+  "sdkVersion": "3",
+  "targetPlatforms": ["basalt", "chalk"],
+  "watchapp": {
+    "watchface": false
+  },
+  "resources": {
+    "media": []
+  }
+}
