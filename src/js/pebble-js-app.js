@@ -15,8 +15,8 @@
  */
 
 Pebble.addEventListener("ready", function() {
-   console.log("Classic-Lite PebbleKit JS ready!");
-   Pebble.sendAppMessage({ "iGot": 0 });
+   console.log("Health Export PebbleKit JS ready!");
+   Pebble.sendAppMessage({ "lastSent": 0 });
 });
 
 Pebble.addEventListener("appmessage", function(e) {
