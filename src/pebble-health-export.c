@@ -9,7 +9,8 @@ static Window *window;
 static TextLayer *text_layer;
 static char buffer[256];
 static HealthMinuteData minute_data[1440];
-static time_t minute_first;
+static time_t minute_first = 0, minute_last = 0;
+static unsigned sent = 0;
 static char global_buffer[1024];
 
 static void
@@ -82,8 +83,9 @@ minute_data_image(char *buffer, size_t size,
 /* send_minute_data - use AppMessage to send the given minute data to phone */
 static void
 send_minute_data(HealthMinuteData *data, time_t key) {
-	int i;
 	int32_t int_key = key / 60;
+
+	if (sent > 10) return;
 
 	if (key % 60 != 0) {
 		APP_LOG(APP_LOG_LEVEL_WARNING,
@@ -129,17 +131,86 @@ send_minute_data(HealthMinuteData *data, time_t key) {
 		    "send_minute_data: app_message_outbox_send returned %d",
 		    (int)msg_result);
 	}
+
+	APP_LOG(APP_LOG_LEVEL_INFO, "sent data for key %" PRIi32, int_key);
+
+	sent += 1;
+}
+
+static int16_t
+get_next_minute_index(time_t previous_t) {
+	time_t t = previous_t ? previous_t + 60 - (previous_t % 60) : 0;
+	int16_t index = 0;
+
+	if (t < minute_first || t >= minute_last) {
+		uint32_t u;
+		minute_first = t;
+		minute_last = time(0);
+		u = health_service_get_minute_history(minute_data,
+		    ARRAY_LENGTH(minute_data),
+		    &minute_first, &minute_last);
+
+		if (!u) {
+			APP_LOG(APP_LOG_LEVEL_ERROR,
+			    "health_service_get_minute_history returned 0");
+			minute_first = minute_last = 0;
+			return -1;
+		}
+
+		if (t >= minute_last) {
+			APP_LOG(APP_LOG_LEVEL_ERROR,
+			    "Unexpected minute_last %" PRIi32
+			    " when t is %" PRIi32,
+			    minute_last, t);
+			return -1;
+		}
+	} else {
+		index = (t - minute_first) / 60;
+	}
+
+	while (minute_data[index].is_invalid) {
+		index += 1;
+		t = minute_first + 60 * index;
+		if (t >= minute_last)
+			return get_next_minute_index(t);
+	}
+
+	return index;
+}
+
+static void
+handle_last_sent(Tuple *tuple) {
+	uint32_t ikey = 0;
+	if (tuple->length == 4 && tuple->type == TUPLE_UINT)
+		ikey = tuple->value->uint32;
+	else if (tuple->length == 4 && tuple->type == TUPLE_INT)
+		ikey = tuple->value->int32;
+	else {
+		APP_LOG(APP_LOG_LEVEL_ERROR,
+		    "Unexpected type %d or length %" PRIu16
+		    " for MSG_KEY_LAST_SENT",
+		    (int)tuple->type, tuple->length);
+		return;
+	}
+	APP_LOG(APP_LOG_LEVEL_INFO, "received LAST_SENT %" PRIu32, ikey);
+
+	int16_t index = get_next_minute_index(ikey * 60);
+	if (index < 0) return;
+
+	APP_LOG(APP_LOG_LEVEL_INFO,
+	    "got index %" PRIi16 ", sending time %" PRIi32,
+	    index, minute_first + index * 60);
+
+	send_minute_data(minute_data + index, minute_first + index * 60);
 }
 
 static void
 inbox_received_handler(DictionaryIterator *iterator, void *context) {
-	(void)iterator;
+	Tuple *tuple;
 	(void)context;
-	APP_LOG(APP_LOG_LEVEL_INFO, "inbox_received_handler called");
 
-	if (minute_data->is_invalid) return;
-	send_minute_data(minute_data, minute_first);
-	APP_LOG(APP_LOG_LEVEL_INFO, "message sent");
+	tuple = dict_find(iterator, MSG_KEY_LAST_SENT);
+	if (tuple) handle_last_sent (tuple);
 }
 
 static time_t

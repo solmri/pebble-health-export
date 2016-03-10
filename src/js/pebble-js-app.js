@@ -21,4 +21,7 @@ Pebble.addEventListener("ready", function() {
 
 Pebble.addEventListener("appmessage", function(e) {
    console.log('Received message: ' + JSON.stringify(e.payload));
+   if (e.payload.dataKey) {
+      Pebble.sendAppMessage({ "lastSent": e.payload.dataKey });
+   }
 });
