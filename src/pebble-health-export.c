@@ -2,6 +2,7 @@
 #include <pebble.h>
 
 #define MSG_KEY_LAST_SENT	110
+#define MSG_KEY_MODAL_MESSAGE	120
 #define MSG_KEY_DATA_KEY	210
 #define MSG_KEY_DATA_LINE	220
 
@@ -21,12 +22,22 @@ window_load(Window *window) {
 	text_layer = text_layer_create((GRect) { .origin = { 0, bounds.size.h / 3 }, .size = { bounds.size.w, bounds.size.h / 3 } });
 	text_layer_set_text(text_layer, buffer);
 	text_layer_set_text_alignment(text_layer, GTextAlignmentCenter);
+	text_layer_set_font(text_layer,
+	    fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	layer_add_child(window_layer, text_layer_get_layer(text_layer));
 }
 
 static void
 window_unload(Window *window) {
 	text_layer_destroy(text_layer);
+}
+
+static void
+set_modal_message(const char *msg) {
+	GRect content_size;
+	strncpy(buffer, msg, sizeof buffer);
+	buffer[sizeof buffer - 1] = 0;
+	layer_mark_dirty(text_layer_get_layer(text_layer));
 }
 
 /* minute_data_image - fill a buffer with CSV data without line terminator */
@@ -211,6 +222,17 @@ inbox_received_handler(DictionaryIterator *iterator, void *context) {
 
 	tuple = dict_find(iterator, MSG_KEY_LAST_SENT);
 	if (tuple) handle_last_sent (tuple);
+
+	tuple = dict_find(iterator, MSG_KEY_MODAL_MESSAGE);
+	if (tuple) {
+		if (tuple->type != TUPLE_CSTRING) {
+			APP_LOG(APP_LOG_LEVEL_ERROR,
+			    "Unexpected type %d for MSG_KEY_MODAL_MESSAGE",
+			    (int)tuple->type);
+		} else {
+			set_modal_message(tuple->value->cstring);
+		}
+	}
 }
 
 static time_t

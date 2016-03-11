@@ -11,6 +11,7 @@
   },
   "appKeys": {
     "lastSent": 110,
+    "modalMessage": 120,
     "dataKey": 210,
     "dataLine": 220
   },

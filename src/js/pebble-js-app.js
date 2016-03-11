@@ -16,7 +16,7 @@
 
 Pebble.addEventListener("ready", function() {
    console.log("Health Export PebbleKit JS ready!");
-   Pebble.sendAppMessage({ "lastSent": 0 });
+   Pebble.sendAppMessage({ "lastSent": 0, "modalMessage": "Not configured" });
 });
 
 Pebble.addEventListener("appmessage", function(e) {
