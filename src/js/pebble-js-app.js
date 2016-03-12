@@ -14,14 +14,47 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+var cfg_endpoint = null;
+var cfg_data_field = null;
+
 Pebble.addEventListener("ready", function() {
    console.log("Health Export PebbleKit JS ready!");
-   Pebble.sendAppMessage({ "lastSent": 0, "modalMessage": "Not configured" });
+   Pebble.sendAppMessage({ "modalMessage": "Not configured" });
 });
 
 Pebble.addEventListener("appmessage", function(e) {
    console.log('Received message: ' + JSON.stringify(e.payload));
    if (e.payload.dataKey) {
       Pebble.sendAppMessage({ "lastSent": e.payload.dataKey });
+   }
+});
+
+Pebble.addEventListener("showConfiguration", function() {
+   var settings = "?v=1.0";
+
+   if (cfg_endpoint) {
+      settings += "&url=" + encodeURIComponent(cfg_endpoint);
+   }
+   if (cfg_data_field) {
+      settings += "&data_field=" + encodeURIComponent(cfg_data_field);
+   }
+
+   Pebble.openURL("https://cdn.rawgit.com/faelys/pebble-health-export/v1.0/config.html" + settings);
+});
+
+Pebble.addEventListener("webviewclosed", function(e) {
+   var configData = JSON.parse(decodeURIComponent(e.response));
+   var wasConfigured = (cfg_endpoint && cfg_data_field);
+
+   if (configData.url) {
+      cfg_endpoint = configData.url;
+   }
+
+   if (configData.dataField) {
+      cfg_data_field = configData.dataField;
+   }
+
+   if (!wasConfigured && cfg_endpoint && cfg_data_field) {
+      Pebble.sendAppMessage({ "lastSent": 0 });
    }
 });
