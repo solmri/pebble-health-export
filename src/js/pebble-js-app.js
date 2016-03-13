@@ -17,6 +17,28 @@
 var cfg_endpoint = null;
 var cfg_data_field = null;
 
+var to_send = [];
+var sender = new XMLHttpRequest();
+
+function sendHead() {
+   if (to_send.length < 1) return;
+   var line = to_send.shift();
+   var data = new FormData();
+   data.append(cfg_data_field, line);
+   sender.open("POST", cfg_endpoint, true);
+   sender.send(data);
+}
+
+function enqueue(key, line) {
+   to_send.push(line);
+   if (to_send.length === 1) sendHead();
+}
+
+function uploadError() { console.log(this.statusText); }
+
+sender.addEventListener("load", sendHead);
+sender.addEventListener("error", uploadError);
+
 Pebble.addEventListener("ready", function() {
    console.log("Health Export PebbleKit JS ready!");
    Pebble.sendAppMessage({ "modalMessage": "Not configured" });
@@ -24,7 +46,8 @@ Pebble.addEventListener("ready", function() {
 
 Pebble.addEventListener("appmessage", function(e) {
    console.log('Received message: ' + JSON.stringify(e.payload));
-   if (e.payload.dataKey) {
+   if (e.payload.dataKey && e.payload.dataLine) {
+      enqueue(e.payload.dataKey, e.payload.dataLine);
       Pebble.sendAppMessage({ "lastSent": e.payload.dataKey });
    }
 });
