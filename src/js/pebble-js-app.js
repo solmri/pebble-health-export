@@ -41,7 +41,15 @@ sender.addEventListener("error", uploadError);
 
 Pebble.addEventListener("ready", function() {
    console.log("Health Export PebbleKit JS ready!");
-   Pebble.sendAppMessage({ "modalMessage": "Not configured" });
+
+   cfg_endpoint = localStorage.getItem("cfgEndpoint");
+   cfg_data_field = localStorage.getItem("cfgDataField");
+
+   if (cfg_endpoint && cfg_data_field) {
+      Pebble.sendAppMessage({ "lastSent": 0 });
+   } else {
+      Pebble.sendAppMessage({ "modalMessage": "Not configured" });
+   }
 });
 
 Pebble.addEventListener("appmessage", function(e) {
@@ -71,10 +79,12 @@ Pebble.addEventListener("webviewclosed", function(e) {
 
    if (configData.url) {
       cfg_endpoint = configData.url;
+      localStorage.setItem("cfgEndpoint", cfg_endpoint);
    }
 
    if (configData.dataField) {
       cfg_data_field = configData.dataField;
+      localStorage.setItem("cfgDataField", cfg_data_field);
    }
 
    if (!wasConfigured && cfg_endpoint && cfg_data_field) {
