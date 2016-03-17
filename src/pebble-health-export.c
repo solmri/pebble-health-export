@@ -10,6 +10,8 @@ static Window *window;
 static TextLayer *text_layer;
 static char buffer[256];
 static HealthMinuteData minute_data[1440];
+static uint16_t minute_data_size = 0;
+static uint16_t minute_index = 0;
 static time_t minute_first = 0, minute_last = 0;
 static unsigned sent = 0;
 static char global_buffer[1024];
@@ -148,6 +150,37 @@ send_minute_data(HealthMinuteData *data, time_t key) {
 	sent += 1;
 }
 
+static bool
+load_minute_data_page(time_t start) {
+	minute_first = start;
+	minute_last = time(0);
+	minute_data_size = health_service_get_minute_history(minute_data,
+	    ARRAY_LENGTH(minute_data),
+	    &minute_first, &minute_last);
+	minute_index = 0;
+
+	if (!minute_data_size) {
+		APP_LOG(APP_LOG_LEVEL_ERROR,
+		    "health_service_get_minute_history returned 0");
+		minute_first = minute_last = 0;
+		return false;
+	}
+
+	return true;
+}
+
+static void
+send_next_line(void) {
+	if (minute_index >= minute_data_size
+	    && !load_minute_data_page(minute_last)) {
+		return;
+	}
+
+	send_minute_data(minute_data + minute_index,
+	    minute_first + 60 * minute_index);
+	minute_index += 1;
+}
+
 static int16_t
 get_next_minute_index(time_t previous_t) {
 	time_t t = previous_t ? previous_t + 60 - (previous_t % 60) : 0;
@@ -212,7 +245,8 @@ handle_last_sent(Tuple *tuple) {
 	    "got index %" PRIi16 ", sending time %" PRIi32,
 	    index, minute_first + index * 60);
 
-	send_minute_data(minute_data + index, minute_first + index * 60);
+	if (load_minute_data_page(ikey * 60))
+		send_next_line();
 }
 
 static void
@@ -253,8 +287,25 @@ init_text(void) {
 }
 
 static void
+outbox_sent_handler(DictionaryIterator *iterator, void *context) {
+	(void)iterator;
+	(void)context;
+	send_next_line();
+}
+
+static void
+outbox_failed_handler(DictionaryIterator *iterator, AppMessageResult reason,
+    void *context) {
+	(void)iterator;
+	(void)context;
+	APP_LOG(APP_LOG_LEVEL_ERROR, "Outbox failed: 0x%x", (unsigned)reason);
+}
+
+static void
 init(void) {
 	app_message_register_inbox_received(inbox_received_handler);
+	app_message_register_outbox_failed(outbox_failed_handler);
+	app_message_register_outbox_sent(outbox_sent_handler);
 	app_message_open(256, 2048);
 
 	init_text();
