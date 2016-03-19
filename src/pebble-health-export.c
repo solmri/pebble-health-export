@@ -7,39 +7,48 @@
 #define MSG_KEY_DATA_LINE	220
 
 static Window *window;
-static TextLayer *text_layer;
-static char buffer[256];
+static TextLayer *modal_text_layer;
+static char modal_text[256];
 static HealthMinuteData minute_data[1440];
 static uint16_t minute_data_size = 0;
 static uint16_t minute_index = 0;
 static time_t minute_first = 0, minute_last = 0;
 static unsigned sent = 0;
+static bool modal_displayed = false;
 static char global_buffer[1024];
+
+static void
+set_modal_mode(bool is_modal) {
+	if (is_modal == modal_displayed) return;
+	layer_set_hidden(text_layer_get_layer(modal_text_layer), is_modal);
+}
 
 static void
 window_load(Window *window) {
 	Layer *window_layer = window_get_root_layer(window);
 	GRect bounds = layer_get_bounds(window_layer);
 
-	text_layer = text_layer_create((GRect) { .origin = { 0, bounds.size.h / 3 }, .size = { bounds.size.w, bounds.size.h / 3 } });
-	text_layer_set_text(text_layer, buffer);
-	text_layer_set_text_alignment(text_layer, GTextAlignmentCenter);
-	text_layer_set_font(text_layer,
+	modal_text_layer = text_layer_create(GRect(0, bounds.size.h / 3,
+	    bounds.size.w, bounds.size.h / 3));
+	text_layer_set_text(modal_text_layer, modal_text);
+	text_layer_set_text_alignment(modal_text_layer, GTextAlignmentCenter);
+	text_layer_set_font(modal_text_layer,
 	    fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
-	layer_add_child(window_layer, text_layer_get_layer(text_layer));
+	layer_add_child(window_layer, text_layer_get_layer(modal_text_layer));
+
+	set_modal_mode(true);
 }
 
 static void
 window_unload(Window *window) {
-	text_layer_destroy(text_layer);
+	text_layer_destroy(modal_text_layer);
 }
 
 static void
 set_modal_message(const char *msg) {
-	GRect content_size;
-	strncpy(buffer, msg, sizeof buffer);
-	buffer[sizeof buffer - 1] = 0;
-	layer_mark_dirty(text_layer_get_layer(text_layer));
+	strncpy(modal_text, msg, sizeof modal_text);
+	modal_text[sizeof modal_text - 1] = 0;
+	layer_mark_dirty(text_layer_get_layer(modal_text_layer));
 }
 
 /* minute_data_image - fill a buffer with CSV data without line terminator */
@@ -181,47 +190,6 @@ send_next_line(void) {
 	minute_index += 1;
 }
 
-static int16_t
-get_next_minute_index(time_t previous_t) {
-	time_t t = previous_t ? previous_t + 60 - (previous_t % 60) : 0;
-	int16_t index = 0;
-
-	if (t < minute_first || t >= minute_last) {
-		uint32_t u;
-		minute_first = t;
-		minute_last = time(0);
-		u = health_service_get_minute_history(minute_data,
-		    ARRAY_LENGTH(minute_data),
-		    &minute_first, &minute_last);
-
-		if (!u) {
-			APP_LOG(APP_LOG_LEVEL_ERROR,
-			    "health_service_get_minute_history returned 0");
-			minute_first = minute_last = 0;
-			return -1;
-		}
-
-		if (t >= minute_last) {
-			APP_LOG(APP_LOG_LEVEL_ERROR,
-			    "Unexpected minute_last %" PRIi32
-			    " when t is %" PRIi32,
-			    minute_last, t);
-			return -1;
-		}
-	} else {
-		index = (t - minute_first) / 60;
-	}
-
-	while (minute_data[index].is_invalid) {
-		index += 1;
-		t = minute_first + 60 * index;
-		if (t >= minute_last)
-			return get_next_minute_index(t);
-	}
-
-	return index;
-}
-
 static void
 handle_last_sent(Tuple *tuple) {
 	uint32_t ikey = 0;
@@ -238,12 +206,10 @@ handle_last_sent(Tuple *tuple) {
 	}
 	APP_LOG(APP_LOG_LEVEL_INFO, "received LAST_SENT %" PRIu32, ikey);
 
-	int16_t index = get_next_minute_index(ikey * 60);
-	if (index < 0) return;
-
-	APP_LOG(APP_LOG_LEVEL_INFO,
-	    "got index %" PRIi16 ", sending time %" PRIi32,
-	    index, minute_first + index * 60);
+	minute_index = 0;
+	minute_data_size = 0;
+	minute_last = ikey * 60;
+	set_modal_mode(false);
 
 	if (load_minute_data_page(ikey * 60))
 		send_next_line();
@@ -264,26 +230,10 @@ inbox_received_handler(DictionaryIterator *iterator, void *context) {
 			    "Unexpected type %d for MSG_KEY_MODAL_MESSAGE",
 			    (int)tuple->type);
 		} else {
+			set_modal_mode(true);
 			set_modal_message(tuple->value->cstring);
 		}
 	}
-}
-
-static time_t
-get_first_health_minute(void) {
-	time_t start = 0, end = time(0);
-	uint32_t ret;
-
-	ret = health_service_get_minute_history(minute_data, 1, &start, &end);
-	return ret ? start : 0;
-}
-
-static void
-init_text(void) {
-	time_t t = get_first_health_minute();
-	struct tm *tm = localtime(&t);
-	strftime(buffer, sizeof buffer, "First health minute: %FT%T%z", tm);
-	minute_first = t;
 }
 
 static void
@@ -308,7 +258,7 @@ init(void) {
 	app_message_register_outbox_sent(outbox_sent_handler);
 	app_message_open(256, 2048);
 
-	init_text();
+	strncpy(modal_text, "Waiting for JS part", sizeof modal_text);
 	window = window_create();
 	window_set_window_handlers(window, (WindowHandlers) {
 	    .load = window_load,
