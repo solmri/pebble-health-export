@@ -17,6 +17,8 @@
 #include <inttypes.h>
 #include <pebble.h>
 
+#include "progress_layer.h"
+
 #define MSG_KEY_LAST_SENT	110
 #define MSG_KEY_MODAL_MESSAGE	120
 #define MSG_KEY_DATA_KEY	210
@@ -33,11 +35,38 @@ static unsigned sent = 0;
 static bool modal_displayed = false;
 static char global_buffer[1024];
 
+static struct {
+	char		label[64];
+	TextLayer	*label_layer;
+	ProgressLayer	*progress_layer;
+	uint32_t	first_key;
+	uint32_t	current_key;
+} ui;
+
 static void
 set_modal_mode(bool is_modal) {
 	if (is_modal == modal_displayed) return;
-	layer_set_hidden(text_layer_get_layer(modal_text_layer), is_modal);
+	layer_set_hidden(text_layer_get_layer(modal_text_layer), !is_modal);
+	layer_set_hidden(text_layer_get_layer(ui.label_layer), is_modal);
+	layer_set_hidden(ui.progress_layer, is_modal);
+	modal_displayed = is_modal;
 }
+
+static void
+update_progress(void) {
+	int32_t last_key = (time(0) + 59) / 60;
+	int32_t key_span = last_key - ui.first_key;
+	int32_t keys_done = ui.current_key - ui.first_key + 1;
+
+	progress_layer_set_progress(ui.progress_layer,
+	    (keys_done * 100 + key_span / 2) / key_span);
+	snprintf(ui.label, sizeof ui.label, "%" PRIi32 " / %" PRIi32,
+	    keys_done, key_span);
+}
+
+#define PROGRESS_HEIGHT 10
+#define PROGRESS_MARGIN 8
+#define LABEL_HEIGHT 22
 
 static void
 window_load(Window *window) {
@@ -52,12 +81,35 @@ window_load(Window *window) {
 	    fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	layer_add_child(window_layer, text_layer_get_layer(modal_text_layer));
 
+	ui.label_layer = text_layer_create(GRect(0,
+	    bounds.size.h / 2 - LABEL_HEIGHT - PROGRESS_MARGIN / 2,
+	    bounds.size.w,
+	    LABEL_HEIGHT));
+	text_layer_set_text(ui.label_layer, ui.label);
+	text_layer_set_text_alignment(ui.label_layer, GTextAlignmentCenter);
+	text_layer_set_font(ui.label_layer,
+	    fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
+	layer_add_child(window_layer, text_layer_get_layer(ui.label_layer));
+
+	ui.progress_layer = progress_layer_create(GRect(bounds.size.w / 4,
+	    bounds.size.h / 2 + PROGRESS_MARGIN / 2,
+	    bounds.size.w / 2,
+	    PROGRESS_HEIGHT));
+	progress_layer_set_progress(ui.progress_layer, 0);
+	progress_layer_set_corner_radius(ui.progress_layer, 3);
+	progress_layer_set_foreground_color(ui.progress_layer, GColorBlack);
+	progress_layer_set_background_color(ui.progress_layer,
+	    GColorLightGray);
+	layer_add_child(window_layer, ui.progress_layer);
+
 	set_modal_mode(true);
 }
 
 static void
 window_unload(Window *window) {
 	text_layer_destroy(modal_text_layer);
+	text_layer_destroy(ui.label_layer);
+	progress_layer_destroy(ui.progress_layer);
 }
 
 static void
@@ -169,6 +221,10 @@ send_minute_data(HealthMinuteData *data, time_t key) {
 		    "send_minute_data: app_message_outbox_send returned %d",
 		    (int)msg_result);
 	}
+
+	if (!ui.first_key) ui.first_key = int_key;
+	ui.current_key = int_key;
+	update_progress();
 
 	APP_LOG(APP_LOG_LEVEL_INFO, "sent data for key %" PRIi32, int_key);
 
