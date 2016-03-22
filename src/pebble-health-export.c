@@ -28,6 +28,7 @@ static Window *window;
 static TextLayer *modal_text_layer;
 static char modal_text[256];
 static HealthMinuteData minute_data[1440];
+static HealthActivityMask minute_activity[1440];
 static uint16_t minute_data_size = 0;
 static uint16_t minute_index = 0;
 static time_t minute_first = 0, minute_last = 0;
@@ -123,7 +124,7 @@ set_modal_message(const char *msg) {
 /*    format: RFC-3339 time, step count, yaw, pitch, vmc, ambient light */
 static uint16_t
 minute_data_image(char *buffer, size_t size,
-    HealthMinuteData *data, time_t key) {
+    HealthMinuteData *data, HealthActivityMask activity_mask, time_t key) {
 	struct tm *tm;
 	size_t ret;
 	if (!buffer || !data) return 0;
@@ -154,12 +155,13 @@ minute_data_image(char *buffer, size_t size,
 	uint16_t pitch = data->orientation >> 4;
 
 	int i = snprintf(buffer + ret, size - ret,
-	    ",%" PRIu8 ",%" PRIu16 ",%" PRIu16 ",%" PRIu16 ",%d",
+	    ",%" PRIu8 ",%" PRIu16 ",%" PRIu16 ",%" PRIu16 ",%d,%" PRIu32,
 	    data->steps,
 	    yaw,
 	    pitch,
 	    data->vmc,
-	    (int)data->light);
+	    (int)data->light,
+	    activity_mask);
 
 	if (i <= 0) {
 		APP_LOG(APP_LOG_LEVEL_ERROR, "minute_data_image: "
@@ -172,7 +174,8 @@ minute_data_image(char *buffer, size_t size,
 
 /* send_minute_data - use AppMessage to send the given minute data to phone */
 static void
-send_minute_data(HealthMinuteData *data, time_t key) {
+send_minute_data(HealthMinuteData *data, HealthActivityMask activity_mask,
+    time_t key) {
 	int32_t int_key = key / 60;
 
 	if (sent > 10) return;
@@ -184,7 +187,7 @@ send_minute_data(HealthMinuteData *data, time_t key) {
 	}
 
 	uint16_t size = minute_data_image(global_buffer, sizeof global_buffer,
-	    data, key);
+	    data, activity_mask, key);
 	if (!size) return;
 
 	AppMessageResult msg_result;
@@ -232,6 +235,31 @@ send_minute_data(HealthMinuteData *data, time_t key) {
 }
 
 static bool
+record_activity(HealthActivity activity, time_t start_time, time_t end_time,
+    void *context) {
+	uint16_t first_index, last_index;
+	(void)context;
+
+	if (start_time <= minute_first) {
+		first_index = 0;
+	} else {
+		first_index = (start_time - minute_first) / 60;
+	}
+	if (first_index >= minute_data_size) return true;
+
+	last_index = (end_time - minute_first + 59) / 60;
+	if (last_index > minute_data_size) {
+		last_index = minute_data_size;
+	}
+
+	for (uint16_t i = first_index; i < last_index; i += 1) {
+		minute_activity[i] |= activity;
+	}
+
+	return true;
+}
+
+static bool
 load_minute_data_page(time_t start) {
 	minute_first = start;
 	minute_last = time(0);
@@ -239,6 +267,17 @@ load_minute_data_page(time_t start) {
 	    ARRAY_LENGTH(minute_data),
 	    &minute_first, &minute_last);
 	minute_index = 0;
+
+	memset(minute_activity, 0, sizeof minute_activity);
+	if (health_service_any_activity_accessible(HealthActivityMaskAll,
+	    minute_first, minute_last)
+	    == HealthServiceAccessibilityMaskAvailable) {
+		health_service_activities_iterate(HealthActivityMaskAll,
+		    minute_first, minute_last,
+		    HealthIterationDirectionFuture,
+		    &record_activity,
+		    0);
+	}
 
 	if (!minute_data_size) {
 		APP_LOG(APP_LOG_LEVEL_ERROR,
@@ -258,6 +297,7 @@ send_next_line(void) {
 	}
 
 	send_minute_data(minute_data + minute_index,
+	    minute_activity[minute_index],
 	    minute_first + 60 * minute_index);
 	minute_index += 1;
 }
