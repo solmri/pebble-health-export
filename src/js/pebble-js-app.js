@@ -22,7 +22,7 @@ var sender = new XMLHttpRequest();
 
 function sendHead() {
    if (to_send.length < 1) return;
-   var line = to_send.shift();
+   var line = to_send[0].split(";")[1];
    var data = new FormData();
    data.append(cfg_data_field, line);
    sender.open("POST", cfg_endpoint, true);
@@ -30,13 +30,19 @@ function sendHead() {
 }
 
 function enqueue(key, line) {
-   to_send.push(line);
+   to_send.push(key + ";" + line);
    if (to_send.length === 1) sendHead();
+}
+
+function uploadDone() {
+   var sent_key = to_send.shift().split(";")[0];
+   Pebble.sendAppMessage({ "uploadDone": parseInt(sent_key, 10) });
+   sendHead();
 }
 
 function uploadError() { console.log(this.statusText); }
 
-sender.addEventListener("load", sendHead);
+sender.addEventListener("load", uploadDone);
 sender.addEventListener("error", uploadError);
 
 Pebble.addEventListener("ready", function() {
