@@ -18,15 +18,17 @@ var cfg_endpoint = null;
 var cfg_data_field = null;
 
 var to_send = [];
-var sender = new XMLHttpRequest();
+var senders = [new XMLHttpRequest(), new XMLHttpRequest()];
+var i_sender = 1;
 
 function sendHead() {
    if (to_send.length < 1) return;
    var line = to_send[0].split(";")[1];
    var data = new FormData();
    data.append(cfg_data_field, line);
-   sender.open("POST", cfg_endpoint, true);
-   sender.send(data);
+   i_sender = 1 - i_sender;
+   senders[i_sender].open("POST", cfg_endpoint, true);
+   senders[i_sender].send(data);
 }
 
 function enqueue(key, line) {
@@ -42,8 +44,10 @@ function uploadDone() {
 
 function uploadError() { console.log(this.statusText); }
 
-sender.addEventListener("load", uploadDone);
-sender.addEventListener("error", uploadError);
+senders[0].addEventListener("load", uploadDone);
+senders[0].addEventListener("error", uploadError);
+senders[1].addEventListener("load", uploadDone);
+senders[1].addEventListener("error", uploadError);
 
 Pebble.addEventListener("ready", function() {
    console.log("Health Export PebbleKit JS ready!");
