@@ -33,11 +33,14 @@ function sendHead() {
 
 function enqueue(key, line) {
    to_send.push(key + ";" + line);
+   localStorage.setItem("toSend", to_send.join("|"));
+   localStorage.setItem("lastSent", key);
    if (to_send.length === 1) sendHead();
 }
 
 function uploadDone() {
    var sent_key = to_send.shift().split(";")[0];
+   localStorage.setItem("toSend", to_send.join("|"));
    Pebble.sendAppMessage({ "uploadDone": parseInt(sent_key, 10) });
    sendHead();
 }
@@ -52,11 +55,16 @@ senders[1].addEventListener("error", uploadError);
 Pebble.addEventListener("ready", function() {
    console.log("Health Export PebbleKit JS ready!");
 
+   var str_to_send = localStorage.getItem("toSend");
+   to_send = str_to_send ? str_to_send.split("|") : [];
+
    cfg_endpoint = localStorage.getItem("cfgEndpoint");
    cfg_data_field = localStorage.getItem("cfgDataField");
 
    if (cfg_endpoint && cfg_data_field) {
-      Pebble.sendAppMessage({ "lastSent": 0 });
+      Pebble.sendAppMessage({
+         "lastSent": parseInt(localStorage.getItem("lastSent") || "0", 10)
+      });
    } else {
       Pebble.sendAppMessage({ "modalMessage": "Not configured" });
    }
