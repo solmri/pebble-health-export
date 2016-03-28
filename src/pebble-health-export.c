@@ -363,11 +363,9 @@ handle_last_sent(Tuple *tuple) {
 
 	minute_index = 0;
 	minute_data_size = 0;
-	minute_last = ikey * 60;
+	minute_last = ikey ? (ikey + 1) * 60 : 0;
 	set_modal_mode(false);
-
-	if (load_minute_data_page(ikey * 60))
-		send_next_line();
+	send_next_line();
 }
 
 static void
