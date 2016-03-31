@@ -34,7 +34,6 @@ static HealthActivityMask minute_activity[1440];
 static uint16_t minute_data_size = 0;
 static uint16_t minute_index = 0;
 static time_t minute_first = 0, minute_last = 0;
-static unsigned sent = 0;
 static bool modal_displayed = false;
 static char global_buffer[1024];
 
@@ -221,8 +220,6 @@ send_minute_data(HealthMinuteData *data, HealthActivityMask activity_mask,
     time_t key) {
 	int32_t int_key = key / 60;
 
-	if (sent > 10) return;
-
 	if (key % 60 != 0) {
 		APP_LOG(APP_LOG_LEVEL_WARNING,
 		    "Discarding %" PRIi32 " second from time key %" PRIi32,
@@ -271,10 +268,6 @@ send_minute_data(HealthMinuteData *data, HealthActivityMask activity_mask,
 	if (!phone.first_key) phone.first_key = int_key;
 	phone.current_key = int_key;
 	update_progress();
-
-	APP_LOG(APP_LOG_LEVEL_INFO, "sent data for key %" PRIi32, int_key);
-
-	sent += 1;
 }
 
 static bool

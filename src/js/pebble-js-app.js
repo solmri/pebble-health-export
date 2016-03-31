@@ -71,7 +71,6 @@ Pebble.addEventListener("ready", function() {
 });
 
 Pebble.addEventListener("appmessage", function(e) {
-   console.log('Received message: ' + JSON.stringify(e.payload));
    if (e.payload.dataKey && e.payload.dataLine) {
       enqueue(e.payload.dataKey, e.payload.dataLine);
    }
