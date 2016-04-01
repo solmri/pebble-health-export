@@ -68,6 +68,10 @@ Pebble.addEventListener("ready", function() {
    } else {
       Pebble.sendAppMessage({ "modalMessage": "Not configured" });
    }
+
+   if (to_send.length >= 1) {
+      sendHead();
+   }
 });
 
 Pebble.addEventListener("appmessage", function(e) {
