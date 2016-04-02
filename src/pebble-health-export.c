@@ -37,7 +37,7 @@ static time_t minute_first = 0, minute_last = 0;
 static bool modal_displayed = false;
 static char global_buffer[1024];
 
-static struct {
+static struct widget {
 	char		label[64];
 	TextLayer	*label_layer;
 	ProgressLayer	*progress_layer;
@@ -57,30 +57,24 @@ set_modal_mode(bool is_modal) {
 }
 
 static void
-update_progress(void) {
+update_half_progress(struct widget *widget) {
+	if (!widget || !widget->current_key) return;
+
 	int32_t last_key = (time(0) + 59) / 60;
+	int32_t key_span = last_key - widget->first_key;
+	int32_t keys_done = widget->current_key - widget->first_key + 1;
 
-	if (phone.current_key) {
-		int32_t key_span = last_key - phone.first_key;
-		int32_t keys_done = phone.current_key - phone.first_key + 1;
+	progress_layer_set_progress(widget->progress_layer,
+	    (keys_done * 100 + key_span / 2) / key_span);
+	snprintf(widget->label, sizeof widget->label,
+	    "%" PRIi32 " / %" PRIi32,
+	    keys_done, key_span);
+}
 
-		progress_layer_set_progress(phone.progress_layer,
-		    (keys_done * 100 + key_span / 2) / key_span);
-		snprintf(phone.label, sizeof phone.label,
-		    "%" PRIi32 " / %" PRIi32,
-		    keys_done, key_span);
-	}
-
-	if (web.current_key) {
-		int32_t key_span = last_key - web.first_key;
-		int32_t keys_done = web.current_key - web.first_key + 1;
-
-		progress_layer_set_progress(web.progress_layer,
-		    (keys_done * 100 + key_span / 2) / key_span);
-		snprintf(web.label, sizeof web.label,
-		    "%" PRIi32 " / %" PRIi32,
-		    keys_done, key_span);
-	}
+static void
+update_progress(void) {
+	update_half_progress(&phone);
+	update_half_progress(&web);
 }
 
 #define PROGRESS_HEIGHT 10
