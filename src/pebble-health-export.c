@@ -60,15 +60,18 @@ static void
 update_half_progress(struct widget *widget) {
 	if (!widget || !widget->current_key) return;
 
+	time_t t;
+	struct tm *tm;
 	int32_t last_key = (time(0) + 59) / 60;
 	int32_t key_span = last_key - widget->first_key;
 	int32_t keys_done = widget->current_key - widget->first_key + 1;
 
 	progress_layer_set_progress(widget->progress_layer,
 	    (keys_done * 100 + key_span / 2) / key_span);
-	snprintf(widget->label, sizeof widget->label,
-	    "%" PRIi32 " / %" PRIi32,
-	    keys_done, key_span);
+
+	t = widget->current_key * 60;
+	tm = localtime(&t);
+	strftime(widget->label, sizeof widget->label, "%F %H:%M", tm);
 }
 
 static void
