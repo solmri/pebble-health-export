@@ -39,10 +39,13 @@ static char global_buffer[1024];
 
 static struct widget {
 	char		label[64];
+	char		rate[32];
 	TextLayer	*label_layer;
+	TextLayer	*rate_layer;
 	ProgressLayer	*progress_layer;
 	uint32_t	first_key;
 	uint32_t	current_key;
+	time_t		start_time;
 } phone, web;
 
 static void
@@ -50,8 +53,10 @@ set_modal_mode(bool is_modal) {
 	if (is_modal == modal_displayed) return;
 	layer_set_hidden(text_layer_get_layer(modal_text_layer), !is_modal);
 	layer_set_hidden(text_layer_get_layer(phone.label_layer), is_modal);
+	layer_set_hidden(text_layer_get_layer(phone.rate_layer), is_modal);
 	layer_set_hidden(phone.progress_layer, is_modal);
 	layer_set_hidden(text_layer_get_layer(web.label_layer), is_modal);
+	layer_set_hidden(text_layer_get_layer(web.rate_layer), is_modal);
 	layer_set_hidden(web.progress_layer, is_modal);
 	modal_displayed = is_modal;
 }
@@ -60,11 +65,13 @@ static void
 update_half_progress(struct widget *widget) {
 	if (!widget || !widget->current_key) return;
 
-	time_t t;
+	time_t t, now = time(0);
 	struct tm *tm;
-	int32_t last_key = (time(0) + 59) / 60;
+	int32_t last_key = (now + 59) / 60;
 	int32_t key_span = last_key - widget->first_key;
 	int32_t keys_done = widget->current_key - widget->first_key + 1;
+	int32_t running_time = widget->start_time
+	    ? now - widget->start_time : 0;
 
 	progress_layer_set_progress(widget->progress_layer,
 	    (keys_done * 100 + key_span / 2) / key_span);
@@ -72,6 +79,13 @@ update_half_progress(struct widget *widget) {
 	t = widget->current_key * 60;
 	tm = localtime(&t);
 	strftime(widget->label, sizeof widget->label, "%F %H:%M", tm);
+
+	if (running_time > 0) {
+		int32_t i = ((widget->current_key - widget->first_key) * 60
+		    + running_time / 2) / running_time;
+		snprintf(widget->rate, sizeof widget->rate,
+		    "%" PRIi32 " /min", i);
+	}
 }
 
 static void
@@ -97,6 +111,16 @@ window_load(Window *window) {
 	text_layer_set_font(modal_text_layer,
 	    fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	layer_add_child(window_layer, text_layer_get_layer(modal_text_layer));
+
+	phone.rate_layer = text_layer_create(GRect(0,
+	    bounds.size.h / 2 - LABEL_MARGIN - 2 * LABEL_HEIGHT,
+	    bounds.size.w,
+	    LABEL_HEIGHT));
+	text_layer_set_text(phone.rate_layer, phone.rate);
+	text_layer_set_text_alignment(phone.rate_layer, GTextAlignmentCenter);
+	text_layer_set_font(phone.rate_layer,
+	    fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
+	layer_add_child(window_layer, text_layer_get_layer(phone.rate_layer));
 
 	phone.label_layer = text_layer_create(GRect(0,
 	    bounds.size.h / 2 - LABEL_HEIGHT - LABEL_MARGIN,
@@ -139,6 +163,16 @@ window_load(Window *window) {
 	text_layer_set_font(web.label_layer,
 	    fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
 	layer_add_child(window_layer, text_layer_get_layer(web.label_layer));
+
+	web.rate_layer = text_layer_create(GRect(0,
+	    bounds.size.h / 2 + LABEL_MARGIN + LABEL_HEIGHT,
+	    bounds.size.w,
+	    LABEL_HEIGHT));
+	text_layer_set_text(web.rate_layer, web.rate);
+	text_layer_set_text_alignment(web.rate_layer, GTextAlignmentCenter);
+	text_layer_set_font(web.rate_layer,
+	    fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
+	layer_add_child(window_layer, text_layer_get_layer(web.rate_layer));
 
 	set_modal_mode(true);
 }
@@ -351,6 +385,7 @@ handle_last_sent(Tuple *tuple) {
 	}
 	APP_LOG(APP_LOG_LEVEL_INFO, "received LAST_SENT %" PRIu32, ikey);
 
+	phone.start_time = time(0);
 	minute_index = 0;
 	minute_data_size = 0;
 	minute_last = ikey ? (ikey + 1) * 60 : 0;
