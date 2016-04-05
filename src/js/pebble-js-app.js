@@ -35,7 +35,10 @@ function enqueue(key, line) {
    to_send.push(key + ";" + line);
    localStorage.setItem("toSend", to_send.join("|"));
    localStorage.setItem("lastSent", key);
-   if (to_send.length === 1) sendHead();
+   if (to_send.length === 1) {
+      Pebble.sendAppMessage({ "uploadStart": parseInt(key, 10) });
+      sendHead();
+   }
 }
 
 function uploadDone() {
@@ -61,13 +64,19 @@ Pebble.addEventListener("ready", function() {
    cfg_endpoint = localStorage.getItem("cfgEndpoint");
    cfg_data_field = localStorage.getItem("cfgDataField");
 
+   var msg = {};
+
    if (cfg_endpoint && cfg_data_field) {
-      Pebble.sendAppMessage({
-         "lastSent": parseInt(localStorage.getItem("lastSent") || "0", 10)
-      });
+      msg.lastSent = parseInt(localStorage.getItem("lastSent") || "0", 10);
    } else {
-      Pebble.sendAppMessage({ "modalMessage": "Not configured" });
+      msg.modalMessage = "Not configured";
    }
+
+   if (to_send.length >= 1) {
+      msg.uploadStart = parseInt(to_send[0].split(";")[0]);
+   }
+
+   Pebble.sendAppMessage(msg);
 
    if (to_send.length >= 1) {
       sendHead();

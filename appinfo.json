@@ -14,6 +14,7 @@
     "lastSent": 110,
     "modalMessage": 120,
     "uploadDone": 130,
+    "uploadStart": 140,
     "dataKey": 210,
     "dataLine": 220
   },

@@ -23,6 +23,7 @@
 #define MSG_KEY_LAST_SENT	110
 #define MSG_KEY_MODAL_MESSAGE	120
 #define MSG_KEY_UPLOAD_DONE	130
+#define MSG_KEY_UPLOAD_START	140
 #define MSG_KEY_DATA_KEY	210
 #define MSG_KEY_DATA_LINE	220
 
@@ -418,6 +419,12 @@ inbox_received_handler(DictionaryIterator *iterator, void *context) {
 		web.current_key = tuple_uint(tuple);
 		if (!web.first_key) web.first_key = web.current_key;
 		update_progress();
+	}
+
+	tuple = dict_find(iterator, MSG_KEY_UPLOAD_START);
+	if (tuple) {
+		web.first_key = tuple_uint(tuple);
+		web.start_time = time(0);
 	}
 }
 
