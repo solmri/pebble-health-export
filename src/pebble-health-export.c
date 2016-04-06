@@ -36,6 +36,7 @@ static uint16_t minute_data_size = 0;
 static uint16_t minute_index = 0;
 static time_t minute_first = 0, minute_last = 0;
 static bool modal_displayed = false;
+static bool display_dirty = false;
 static char global_buffer[1024];
 
 static struct widget {
@@ -93,6 +94,7 @@ static void
 update_progress(void) {
 	update_half_progress(&phone);
 	update_half_progress(&web);
+	display_dirty = false;
 }
 
 #define PROGRESS_HEIGHT 10
@@ -299,7 +301,7 @@ send_minute_data(HealthMinuteData *data, HealthActivityMask activity_mask,
 
 	if (!phone.first_key) phone.first_key = int_key;
 	phone.current_key = int_key;
-	update_progress();
+	display_dirty = true;
 }
 
 static bool
@@ -418,7 +420,7 @@ inbox_received_handler(DictionaryIterator *iterator, void *context) {
 	if (tuple) {
 		web.current_key = tuple_uint(tuple);
 		if (!web.first_key) web.first_key = web.current_key;
-		update_progress();
+		display_dirty = true;
 	}
 
 	tuple = dict_find(iterator, MSG_KEY_UPLOAD_START);
@@ -444,6 +446,13 @@ outbox_failed_handler(DictionaryIterator *iterator, AppMessageResult reason,
 }
 
 static void
+tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+	(void)tick_time;
+	(void)units_changed;
+	if (display_dirty) update_progress();
+}
+
+static void
 init(void) {
 	app_message_register_inbox_received(inbox_received_handler);
 	app_message_register_outbox_failed(outbox_failed_handler);
@@ -457,6 +466,7 @@ init(void) {
 	    .unload = window_unload,
 	});
 	window_stack_push(window, true);
+	tick_timer_service_subscribe(SECOND_UNIT, &tick_handler);
 }
 
 static void deinit(void) {
