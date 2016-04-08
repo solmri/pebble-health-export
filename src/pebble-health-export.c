@@ -227,6 +227,17 @@ minute_data_image(char *buffer, size_t size,
 		return 0;
 	}
 
+	if (data->is_invalid) {
+		int i = snprintf(buffer + ret, size - ret, ",,,,,,");
+
+		if (i <= 0) {
+			APP_LOG(APP_LOG_LEVEL_ERROR, "minute_data_image: "
+			    "Unexpected return value %d of snprintf (i)", i);
+			return 0;
+		}
+		return ret + i;
+	}
+
 	uint16_t yaw = data->orientation & 0xF;
 	uint16_t pitch = data->orientation >> 4;
 
