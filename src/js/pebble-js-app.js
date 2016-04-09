@@ -16,19 +16,31 @@
 
 var cfg_endpoint = null;
 var cfg_data_field = null;
+var cfg_bundle_max = 30;
+var cfg_bundle_separator = "\r\n";
 
 var to_send = [];
 var senders = [new XMLHttpRequest(), new XMLHttpRequest()];
 var i_sender = 1;
+var bundle_size = 0;
 
-function sendHead() {
-   if (to_send.length < 1) return;
-   var line = to_send[0].split(";")[1];
+function sendPayload(payload) {
    var data = new FormData();
-   data.append(cfg_data_field, line);
+   data.append(cfg_data_field, payload);
    i_sender = 1 - i_sender;
    senders[i_sender].open("POST", cfg_endpoint, true);
    senders[i_sender].send(data);
+}
+
+function sendHead() {
+   if (to_send.length < 1) return;
+   bundle_size = 0;
+   var payload = [];
+   while (bundle_size < cfg_bundle_max && bundle_size < to_send.length) {
+      payload.push(to_send[bundle_size].split(";")[1]);
+      bundle_size += 1;
+   }
+   sendPayload(payload.join(cfg_bundle_separator));
 }
 
 function enqueue(key, line) {
@@ -42,6 +54,9 @@ function enqueue(key, line) {
 }
 
 function uploadDone() {
+   if (bundle_size > 1) {
+      to_send.splice(0, bundle_size - 1);
+   }
    var sent_key = to_send.shift().split(";")[0];
    localStorage.setItem("toSend", to_send.join("|"));
    Pebble.sendAppMessage({ "uploadDone": parseInt(sent_key, 10) });
