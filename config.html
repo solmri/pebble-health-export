@@ -38,10 +38,22 @@
     var options = {
       "url": document.getElementById("url").value,
       "dataField": document.getElementById("dataField").value,
+      "bundleMax": document.getElementById("bundleMaxSize").value,
+      "bundleSeparator": encodeURIComponent(document.getElementById("bundleSeparator").value),
+    }
+
+    if (!document.getElementById("bundleEnable").checked) {
+       options.bundleMax = "1";
     }
 
     console.log("returning " + JSON.stringify(options));
     document.location = return_to + encodeURIComponent(JSON.stringify(options));
+  }
+
+  function updateBundleVisibility() {
+    document.getElementById("bundleFields").style.display
+     = document.getElementById("bundleEnable").checked
+     ? "block" : "none";
   }
   </script>
 </head>
@@ -69,6 +81,30 @@
   </div>
 
   <div class="item-container">
+    <div class="item-container-header">Data Bundling</div>
+    <div class="item-container-content">
+      <label class="item">
+        Enable Data Bundling
+        <input type="checkbox" class="item-toggle" name="bundleEnable" id="bundleEnable" onchange="updateBundleVisibility();">
+      </label>
+      <div id=bundleFields>
+        <label class="item">
+          Max Bundle Size
+          <div class="item-input-wrapper item-slider-text">
+            <input type="text" class="item-input" name="bundleMaxSize" id="bundleMaxSize" value="1">
+          </div>
+        </label>
+        <label class="item">
+          Line Separator
+          <div class="item-input-wrapper">
+            <input type="text" class="item-input" name="bundleSeparator" id="bundleSeparator" placeholder="%0d%0a">
+          </div>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="item-container">
     <div class="button-container">
       <input id="submitButton" type="button" class="item-button" value="SUBMIT" onClick="onSubmit()">
     </div>
@@ -80,8 +116,16 @@
     if (versionTag) {
       document.getElementsByTagName("h1")[0].childNodes[0].nodeValue = "Health Export " + versionTag;
     }
+
+    var initBundleSize = parseInt(getQueryParam("bundle_max", "1"), 10);
+    if (!(initBundleSize >= 1)) initBundleSize = 1;
+
     document.getElementById("url").value = getQueryParam("url", "");
     document.getElementById("dataField").value = getQueryParam("data_field", "");
+    document.getElementById("bundleEnable").checked = (initBundleSize > 1);
+    document.getElementById("bundleMaxSize").value = initBundleSize;
+    document.getElementById("bundleSeparator").value = encodeURIComponent(getQueryParam("bundle_sep", ""));
+    updateBundleVisibility();
   </script>
 </body>
 </html>

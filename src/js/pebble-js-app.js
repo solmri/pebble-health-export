@@ -16,7 +16,7 @@
 
 var cfg_endpoint = null;
 var cfg_data_field = null;
-var cfg_bundle_max = 30;
+var cfg_bundle_max = 1;
 var cfg_bundle_separator = "\r\n";
 
 var to_send = [];
@@ -78,6 +78,10 @@ Pebble.addEventListener("ready", function() {
 
    cfg_endpoint = localStorage.getItem("cfgEndpoint");
    cfg_data_field = localStorage.getItem("cfgDataField");
+   cfg_bundle_max = parseInt(localStorage.getItem("cfgBundleMax") || "1", 10);
+   cfg_bundle_separator = localStorage.getItem("cfgBundleSeparator");
+
+   if (!(cfg_bundle_max >= 1)) cfg_bundle_max = 1;
 
    var msg = {};
 
@@ -113,6 +117,12 @@ Pebble.addEventListener("showConfiguration", function() {
    if (cfg_data_field) {
       settings += "&data_field=" + encodeURIComponent(cfg_data_field);
    }
+   if (cfg_bundle_max) {
+      settings += "&bundle_max=" + encodeURIComponent(cfg_bundle_max);
+   }
+   if (cfg_bundle_separator) {
+      settings += "&bundle_sep=" + encodeURIComponent(cfg_bundle_separator);
+   }
 
    Pebble.openURL("https://cdn.rawgit.com/faelys/pebble-health-export/v1.0/config.html" + settings);
 });
@@ -129,6 +139,16 @@ Pebble.addEventListener("webviewclosed", function(e) {
    if (configData.dataField) {
       cfg_data_field = configData.dataField;
       localStorage.setItem("cfgDataField", cfg_data_field);
+   }
+
+   if (configData.bundleMax) {
+      cfg_bundle_max = parseInt(configData.bundleMax, 10);
+      if (!(cfg_bundle_max >= 1)) cfg_bundle_max = 1;
+      localStorage.setItem("cfgBundleMax", cfg_bundle_max);
+   }
+   if (configData.bundleSeparator) {
+      cfg_bundle_separator = decodeURIComponent(configData.bundleSeparator);
+      localStorage.setItem("cfgBundleSeparator", cfg_bundle_separator);
    }
 
    if (!wasConfigured && cfg_endpoint && cfg_data_field) {
