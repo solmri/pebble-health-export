@@ -146,9 +146,19 @@ Pebble.addEventListener("webviewclosed", function(e) {
       if (!(cfg_bundle_max >= 1)) cfg_bundle_max = 1;
       localStorage.setItem("cfgBundleMax", cfg_bundle_max);
    }
+
    if (configData.bundleSeparator) {
       cfg_bundle_separator = decodeURIComponent(configData.bundleSeparator);
       localStorage.setItem("cfgBundleSeparator", cfg_bundle_separator);
+   }
+
+   if (configData.resend) {
+      senders[0].abort();
+      senders[1].abort();
+      localStorage.setItem("toSend", "");
+      localStorage.setItem("lastSent", "0");
+      to_send = [];
+      wasConfigured = false;
    }
 
    if (!wasConfigured && cfg_endpoint && cfg_data_field) {

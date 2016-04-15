@@ -46,6 +46,10 @@
        options.bundleMax = "1";
     }
 
+    if (document.getElementById("resendEverything").checked) {
+       options.resend = true;
+    }
+
     console.log("returning " + JSON.stringify(options));
     document.location = return_to + encodeURIComponent(JSON.stringify(options));
   }
@@ -67,6 +71,10 @@
     <div class="item-container-content">
       <label class="item">
         <input type="text" class="item-input" name="url" id="url" placeholder="http://example.com/post/path">
+      </label>
+      <label class="item">
+        Restart sending everthing
+        <input type="checkbox" class="item-toggle" name="resendEverything" id="resendEverything">
       </label>
     </div>
   </div>
