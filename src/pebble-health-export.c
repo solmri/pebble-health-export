@@ -38,6 +38,7 @@ static time_t minute_first = 0, minute_last = 0;
 static bool modal_displayed = false;
 static bool display_dirty = false;
 static char global_buffer[1024];
+static bool sending_data = false;
 
 static struct widget {
 	char		label[64];
@@ -374,6 +375,7 @@ static void
 send_next_line(void) {
 	if (minute_index >= minute_data_size
 	    && !load_minute_data_page(minute_last)) {
+		sending_data = false;
 		return;
 	}
 
@@ -400,11 +402,18 @@ handle_last_sent(Tuple *tuple) {
 	APP_LOG(APP_LOG_LEVEL_INFO, "received LAST_SENT %" PRIu32, ikey);
 
 	phone.start_time = time(0);
+	phone.first_key = phone.current_key = 0;
+	web.start_time = 0;
+	web.first_key = web.current_key = 0;
 	minute_index = 0;
 	minute_data_size = 0;
 	minute_last = ikey ? (ikey + 1) * 60 : 0;
 	set_modal_mode(false);
-	send_next_line();
+
+	if (!sending_data) {
+		sending_data = true;
+		send_next_line();
+	}
 }
 
 static void
