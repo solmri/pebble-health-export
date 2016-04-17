@@ -35,11 +35,17 @@
   function onSubmit() {
     // Set the return URL depending on the runtime environment
     var return_to = getQueryParam("return_to", "pebblejs://close#");
+    var sign_enabled = document.getElementById("signEnable").checked;
     var options = {
       "url": document.getElementById("url").value,
       "dataField": document.getElementById("dataField").value,
       "bundleMax": document.getElementById("bundleMaxSize").value,
       "bundleSeparator": encodeURIComponent(document.getElementById("bundleSeparator").value),
+      "signAlgorithm": document.getElementById("signAlgorithm").value,
+      "signFieldFormat": document.getElementById("signFieldFormat").value,
+      "signFieldName": document.getElementById("signFieldName").value,
+      "signKey": document.getElementById("signKey").value,
+      "signKeyFormat": document.getElementById("signKeyFormat").value,
     }
 
     if (!document.getElementById("bundleEnable").checked) {
@@ -57,6 +63,12 @@
   function updateBundleVisibility() {
     document.getElementById("bundleFields").style.display
      = document.getElementById("bundleEnable").checked
+     ? "block" : "none";
+  }
+
+  function updateSignVisibility() {
+    document.getElementById("signFields").style.display
+     = document.getElementById("signEnable").checked
      ? "block" : "none";
   }
   </script>
@@ -113,6 +125,58 @@
   </div>
 
   <div class="item-container">
+    <div class="item-container-header">Data Signature</div>
+    <div class="item-container-content">
+      <label class="item">
+        Enable
+        <input type="checkbox" class="item-toggle" name="signEnable" id="signEnable" onchange="updateSignVisibility();">
+      </label>
+      <div id=signFields>
+        <label class="item">
+          Algorithm
+          <select id="signAlgorithm" class="item-select">
+            <option class="item-select-option">SHA-1</option>
+            <option class="item-select-option">SHA-224</option>
+            <option class="item-select-option">SHA-256</option>
+            <option class="item-select-option">SHA-384</option>
+            <option class="item-select-option">SHA-512</option>
+          </select>
+        </label>
+        <label class="item">
+          Field Format
+          <select id="signFieldFormat" class="item-select">
+            <option class="item-select-option" value="HEX">Hex</option>
+            <option class="item-select-option" value="B64">Base-64</option>
+            <option class="item-select-option" value="TEXT">Text</option>
+            <option class="item-select-option" value="BYTES">Bytes</option>
+          </select>
+        </label>
+        <label class="item">
+          Signature Field Name
+          <div class="item-input-wrapper">
+            <input type="text" class="item-input" name="signFieldName" id="signFieldName" value="">
+          </div>
+        </label>
+        <label class="item">
+          Private Key
+          <div class="item-input-wrapper">
+            <input type="text" class="item-input" name="signKey" id="signKey">
+          </div>
+        </label>
+        <label class="item">
+          Private Key Format
+          <select id="signKeyFormat" class="item-select">
+            <option class="item-select-option" value="HEX">Hex</option>
+            <option class="item-select-option" value="B64">Base-64</option>
+            <option class="item-select-option" value="TEXT">Text</option>
+            <option class="item-select-option" value="BYTES">Bytes</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="item-container">
     <div class="button-container">
       <input id="submitButton" type="button" class="item-button" value="SUBMIT" onClick="onSubmit()">
     </div>
@@ -133,7 +197,14 @@
     document.getElementById("bundleEnable").checked = (initBundleSize > 1);
     document.getElementById("bundleMaxSize").value = initBundleSize;
     document.getElementById("bundleSeparator").value = encodeURIComponent(getQueryParam("bundle_sep", ""));
+    document.getElementById("signAlgorithm").value = getQueryParam("s_algo", "SHA-1");
+    document.getElementById("signFieldFormat").value = getQueryParam("s_fieldf", "HEX");
+    document.getElementById("signFieldName").value = getQueryParam("s_field", "");
+    document.getElementById("signKey").value = getQueryParam("s_key", "");
+    document.getElementById("signKeyFormat").value = getQueryParam("s_keyf", "HEX");
+    document.getElementById("signEnable").checked = (getQueryParam("s_field", "") !== "");
     updateBundleVisibility();
+    updateSignVisibility();
   </script>
 </body>
 </html>
