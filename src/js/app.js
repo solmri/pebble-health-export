@@ -28,10 +28,19 @@ var to_send = [];
 var senders = [new XMLHttpRequest(), new XMLHttpRequest()];
 var i_sender = 1;
 var bundle_size = 0;
+var jsSHA = require("sha");
 
 function sendPayload(payload) {
    var data = new FormData();
    data.append(cfg_data_field, payload);
+
+   if (cfg_sign_field) {
+      var sha = new jsSHA(cfg_sign_algo, "TEXT");
+      sha.setHMACKey(cfg_sign_key, cfg_sign_key_format);
+      sha.update(payload);
+      data.append(cfg_sign_field, sha.getHMAC(cfg_sign_field_format));
+   }
+
    i_sender = 1 - i_sender;
    senders[i_sender].open("POST", cfg_endpoint, true);
    senders[i_sender].send(data);
