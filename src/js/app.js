@@ -23,6 +23,7 @@ var cfg_sign_field = "";
 var cfg_sign_field_format = "";
 var cfg_sign_key = "";
 var cfg_sign_key_format = "";
+var cfg_auto_close = false;
 
 var to_send = [];
 var senders = [new XMLHttpRequest(), new XMLHttpRequest()];
@@ -99,6 +100,7 @@ Pebble.addEventListener("ready", function() {
    cfg_sign_field_format = localStorage.getItem("cfgSignFieldFormat");
    cfg_sign_key = localStorage.getItem("cfgSignKey");
    cfg_sign_key_format = localStorage.getItem("cfgSignKeyFormat");
+   cfg_auto_close = localStorage.getItem("cfgAutoClose");
 
    if (!(cfg_bundle_max >= 1)) cfg_bundle_max = 1;
 
@@ -148,6 +150,10 @@ Pebble.addEventListener("showConfiguration", function() {
        + "&s_fieldf=" + encodeURIComponent(cfg_sign_field_format)
        + "&s_key=" + encodeURIComponent(cfg_sign_key)
        + "&s_keyf=" + encodeURIComponent(cfg_sign_key_format);
+   }
+
+   if (cfg_auto_close) {
+      settings += "&ac=1";
    }
 
    Pebble.openURL("https://cdn.rawgit.com/faelys/pebble-health-export/v1.0/config.html" + settings);
@@ -201,6 +207,11 @@ Pebble.addEventListener("webviewclosed", function(e) {
    if (configData.signKeyFormat) {
       cfg_sign_key_format = configData.signKeyFormat;
       localStorage.setItem("cfgSignKeyFormat", cfg_sign_key_format);
+   }
+
+   if (configData.autoClose) {
+      cfg_auto_close = configData.autoClose;
+      localStorage.setItem("cfgAutoClose", cfg_auto_close);
    }
 
    console.log(cfg_sign_field ? "Signature enabled" : "Signature disabled");

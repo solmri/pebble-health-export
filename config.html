@@ -46,6 +46,7 @@
       "signFieldName": document.getElementById("signFieldName").value,
       "signKey": document.getElementById("signKey").value,
       "signKeyFormat": document.getElementById("signKeyFormat").value,
+      "autoClose" : document.getElementById("autoClose").checked ? 1 : 0,
     }
 
     if (!document.getElementById("bundleEnable").checked) {
@@ -177,6 +178,16 @@
   </div>
 
   <div class="item-container">
+    <div class="item-container-header">Auto-close</div>
+    <div class="item-container-content">
+      <label class="item">
+        Auto-close on success
+        <input type="checkbox" class="item-toggle" name="autoClose" id="autoClose">
+      </label>
+    </div>
+  </div>
+
+  <div class="item-container">
     <div class="button-container">
       <input id="submitButton" type="button" class="item-button" value="SUBMIT" onClick="onSubmit()">
     </div>
@@ -203,6 +214,7 @@
     document.getElementById("signKey").value = getQueryParam("s_key", "");
     document.getElementById("signKeyFormat").value = getQueryParam("s_keyf", "HEX");
     document.getElementById("signEnable").checked = (getQueryParam("s_field", "") !== "");
+    document.getElementById("autoClose").checked = (getQueryParam("ac", "") !== "");
     updateBundleVisibility();
     updateSignVisibility();
   </script>
