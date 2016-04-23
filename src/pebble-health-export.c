@@ -26,6 +26,7 @@
 #define MSG_KEY_UPLOAD_START	140
 #define MSG_KEY_DATA_KEY	210
 #define MSG_KEY_DATA_LINE	220
+#define MSG_KEY_CFG_AUTO_CLOSE	310
 
 static Window *window;
 static TextLayer *modal_text_layer;
@@ -39,6 +40,7 @@ static bool modal_displayed = false;
 static bool display_dirty = false;
 static char global_buffer[1024];
 static bool sending_data = false;
+static bool auto_close = false;
 
 static struct widget {
 	char		label[64];
@@ -50,6 +52,11 @@ static struct widget {
 	uint32_t	current_key;
 	time_t		start_time;
 } phone, web;
+
+static void
+close_app(void) {
+	window_stack_pop_all(true);
+}
 
 static void
 set_modal_mode(bool is_modal) {
@@ -376,6 +383,8 @@ send_next_line(void) {
 	if (minute_index >= minute_data_size
 	    && !load_minute_data_page(minute_last)) {
 		sending_data = false;
+		if (auto_close && web.current_key >= phone.current_key)
+			close_app();
 		return;
 	}
 
@@ -441,12 +450,24 @@ inbox_received_handler(DictionaryIterator *iterator, void *context) {
 		web.current_key = tuple_uint(tuple);
 		if (!web.first_key) web.first_key = web.current_key;
 		display_dirty = true;
+		if (auto_close && !sending_data
+		    && web.current_key >= phone.current_key)
+			close_app();
 	}
 
 	tuple = dict_find(iterator, MSG_KEY_UPLOAD_START);
 	if (tuple) {
 		web.first_key = tuple_uint(tuple);
 		web.start_time = time(0);
+	}
+
+	tuple = dict_find(iterator, MSG_KEY_CFG_AUTO_CLOSE);
+	if (tuple) {
+		auto_close = (tuple_uint(tuple) != 0);
+		persist_write_bool(MSG_KEY_CFG_AUTO_CLOSE, auto_close);
+		if (auto_close && !sending_data
+		    && web.current_key >= phone.current_key)
+			close_app();
 	}
 }
 
@@ -474,6 +495,10 @@ tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 
 static void
 init(void) {
+	auto_close = persist_read_bool(MSG_KEY_CFG_AUTO_CLOSE);
+	APP_LOG(APP_LOG_LEVEL_INFO, "auto_close initialized to %s",
+	    auto_close ? "true" : "false");
+
 	app_message_register_inbox_received(inbox_received_handler);
 	app_message_register_outbox_failed(outbox_failed_handler);
 	app_message_register_outbox_sent(outbox_sent_handler);

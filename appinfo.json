@@ -17,7 +17,8 @@
     "uploadDone": 130,
     "uploadStart": 140,
     "dataKey": 210,
-    "dataLine": 220
+    "dataLine": 220,
+    "cfgAutoClose": 310
   },
   "resources": {
     "media": []

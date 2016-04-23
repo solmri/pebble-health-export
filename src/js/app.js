@@ -209,9 +209,10 @@ Pebble.addEventListener("webviewclosed", function(e) {
       localStorage.setItem("cfgSignKeyFormat", cfg_sign_key_format);
    }
 
-   if (configData.autoClose) {
+   if (configData.autoClose !== null) {
       cfg_auto_close = configData.autoClose;
       localStorage.setItem("cfgAutoClose", cfg_auto_close);
+      Pebble.sendAppMessage({ "cfgAutoClose": cfg_auto_close ? 1 : 0 });
    }
 
    console.log(cfg_sign_field ? "Signature enabled" : "Signature disabled");
