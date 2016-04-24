@@ -132,6 +132,8 @@ Pebble.addEventListener("appmessage", function(e) {
 Pebble.addEventListener("showConfiguration", function() {
    var settings = "?v=1.0";
 
+   Pebble.sendAppMessage({ "cfgStart": 1 });
+
    if (cfg_endpoint) {
       settings += "&url=" + encodeURIComponent(cfg_endpoint);
    }
@@ -162,6 +164,7 @@ Pebble.addEventListener("showConfiguration", function() {
 Pebble.addEventListener("webviewclosed", function(e) {
    var configData = JSON.parse(decodeURIComponent(e.response));
    var wasConfigured = (cfg_endpoint && cfg_data_field);
+   var msg = { "cfgEnd": 1 };
 
    if (configData.url) {
       cfg_endpoint = configData.url;
@@ -212,7 +215,7 @@ Pebble.addEventListener("webviewclosed", function(e) {
    if (configData.autoClose !== null) {
       cfg_auto_close = configData.autoClose;
       localStorage.setItem("cfgAutoClose", cfg_auto_close);
-      Pebble.sendAppMessage({ "cfgAutoClose": cfg_auto_close ? 1 : 0 });
+      msg.cfgAutoClose = cfg_auto_close ? 1 : 0;
    }
 
    console.log(cfg_sign_field ? "Signature enabled" : "Signature disabled");
@@ -227,6 +230,8 @@ Pebble.addEventListener("webviewclosed", function(e) {
    }
 
    if (!wasConfigured && cfg_endpoint && cfg_data_field) {
-      Pebble.sendAppMessage({ "lastSent": 0 });
+      msg.lastSent = 0;
    }
+
+   Pebble.sendAppMessage(msg);
 });

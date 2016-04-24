@@ -18,6 +18,8 @@
     "uploadStart": 140,
     "dataKey": 210,
     "dataLine": 220,
+    "cfgStart": 301,
+    "cfgEnd": 302,
     "cfgAutoClose": 310
   },
   "resources": {

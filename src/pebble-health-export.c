@@ -26,6 +26,8 @@
 #define MSG_KEY_UPLOAD_START	140
 #define MSG_KEY_DATA_KEY	210
 #define MSG_KEY_DATA_LINE	220
+#define MSG_KEY_CFG_START	301
+#define MSG_KEY_CFG_END		302
 #define MSG_KEY_CFG_AUTO_CLOSE	310
 
 static Window *window;
@@ -40,7 +42,9 @@ static bool modal_displayed = false;
 static bool display_dirty = false;
 static char global_buffer[1024];
 static bool sending_data = false;
+static bool cfg_auto_close = false;
 static bool auto_close = false;
+static bool configuring = false;
 
 static struct widget {
 	char		label[64];
@@ -463,11 +467,25 @@ inbox_received_handler(DictionaryIterator *iterator, void *context) {
 
 	tuple = dict_find(iterator, MSG_KEY_CFG_AUTO_CLOSE);
 	if (tuple) {
-		auto_close = (tuple_uint(tuple) != 0);
+		auto_close = cfg_auto_close = (tuple_uint(tuple) != 0);
 		persist_write_bool(MSG_KEY_CFG_AUTO_CLOSE, auto_close);
 		if (auto_close && !sending_data
 		    && web.current_key >= phone.current_key)
 			close_app();
+	}
+
+	tuple = dict_find(iterator, MSG_KEY_CFG_START);
+	if (tuple) {
+		APP_LOG(APP_LOG_LEVEL_INFO, "Starting configuration");
+		auto_close = false;
+		configuring = true;
+	}
+
+	tuple = dict_find(iterator, MSG_KEY_CFG_END);
+	if (tuple) {
+		APP_LOG(APP_LOG_LEVEL_INFO, "End of configuration");
+		auto_close = cfg_auto_close;
+		configuring = false;
 	}
 }
 
@@ -495,9 +513,7 @@ tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 
 static void
 init(void) {
-	auto_close = persist_read_bool(MSG_KEY_CFG_AUTO_CLOSE);
-	APP_LOG(APP_LOG_LEVEL_INFO, "auto_close initialized to %s",
-	    auto_close ? "true" : "false");
+	cfg_auto_close = persist_read_bool(MSG_KEY_CFG_AUTO_CLOSE);
 
 	app_message_register_inbox_received(inbox_received_handler);
 	app_message_register_outbox_failed(outbox_failed_handler);
