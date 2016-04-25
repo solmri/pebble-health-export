@@ -430,15 +430,13 @@ handle_last_sent(Tuple *tuple) {
 }
 
 static void
-inbox_received_handler(DictionaryIterator *iterator, void *context) {
-	Tuple *tuple;
-	(void)context;
+handle_received_tuple(Tuple *tuple) {
+	switch (tuple->key) {
+	    case MSG_KEY_LAST_SENT:
+		handle_last_sent (tuple);
+		break;
 
-	tuple = dict_find(iterator, MSG_KEY_LAST_SENT);
-	if (tuple) handle_last_sent (tuple);
-
-	tuple = dict_find(iterator, MSG_KEY_MODAL_MESSAGE);
-	if (tuple) {
+	    case MSG_KEY_MODAL_MESSAGE:
 		if (tuple->type != TUPLE_CSTRING) {
 			APP_LOG(APP_LOG_LEVEL_ERROR,
 			    "Unexpected type %d for MSG_KEY_MODAL_MESSAGE",
@@ -447,46 +445,58 @@ inbox_received_handler(DictionaryIterator *iterator, void *context) {
 			set_modal_mode(true);
 			set_modal_message(tuple->value->cstring);
 		}
-	}
+		break;
 
-	tuple = dict_find(iterator, MSG_KEY_UPLOAD_DONE);
-	if (tuple) {
+	    case MSG_KEY_UPLOAD_DONE:
 		web.current_key = tuple_uint(tuple);
 		if (!web.first_key) web.first_key = web.current_key;
 		display_dirty = true;
 		if (auto_close && !sending_data
 		    && web.current_key >= phone.current_key)
 			close_app();
-	}
+		break;
 
-	tuple = dict_find(iterator, MSG_KEY_UPLOAD_START);
-	if (tuple) {
+	    case MSG_KEY_UPLOAD_START:
 		web.first_key = tuple_uint(tuple);
 		web.start_time = time(0);
-	}
+		break;
 
-	tuple = dict_find(iterator, MSG_KEY_CFG_AUTO_CLOSE);
-	if (tuple) {
+	    case MSG_KEY_CFG_AUTO_CLOSE:
 		auto_close = cfg_auto_close = (tuple_uint(tuple) != 0);
 		persist_write_bool(MSG_KEY_CFG_AUTO_CLOSE, auto_close);
 		if (auto_close && !sending_data
 		    && web.current_key >= phone.current_key)
 			close_app();
-	}
+		break;
 
-	tuple = dict_find(iterator, MSG_KEY_CFG_START);
-	if (tuple) {
+	    case MSG_KEY_CFG_START:
 		APP_LOG(APP_LOG_LEVEL_INFO, "Starting configuration");
 		auto_close = false;
 		configuring = true;
-	}
+		break;
 
-	tuple = dict_find(iterator, MSG_KEY_CFG_END);
-	if (tuple) {
+	    case MSG_KEY_CFG_END:
 		APP_LOG(APP_LOG_LEVEL_INFO, "End of configuration");
 		auto_close = cfg_auto_close;
 		configuring = false;
+		break;
+
+	    default:
+		APP_LOG(APP_LOG_LEVEL_ERROR,
+		    "Unknown key %lu in received message",
+		    (unsigned long)tuple->key);
 	}
+}
+
+static void
+inbox_received_handler(DictionaryIterator *iterator, void *context) {
+	Tuple *tuple;
+	(void)context;
+
+	for (tuple = dict_read_first(iterator);
+	    tuple;
+	    tuple = dict_read_next(iterator))
+		handle_received_tuple(tuple);
 }
 
 static void
