@@ -524,6 +524,7 @@ tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 static void
 init(void) {
 	cfg_auto_close = persist_read_bool(MSG_KEY_CFG_AUTO_CLOSE);
+	auto_close = cfg_auto_close;
 
 	app_message_register_inbox_received(inbox_received_handler);
 	app_message_register_outbox_failed(outbox_failed_handler);
