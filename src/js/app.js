@@ -24,6 +24,7 @@ var cfg_sign_field_format = "";
 var cfg_sign_key = "";
 var cfg_sign_key_format = "";
 var cfg_auto_close = false;
+var cfg_wakeup_time = -1;
 
 var to_send = [];
 var senders = [new XMLHttpRequest(), new XMLHttpRequest()];
@@ -101,6 +102,7 @@ Pebble.addEventListener("ready", function() {
    cfg_sign_key = localStorage.getItem("cfgSignKey");
    cfg_sign_key_format = localStorage.getItem("cfgSignKeyFormat");
    cfg_auto_close = localStorage.getItem("cfgAutoClose");
+   cfg_wakeup_time = parseInt(localStorage.getItem("cfgWakeupTime") || "-1", 10);
 
    if (!(cfg_bundle_max >= 1)) cfg_bundle_max = 1;
 
@@ -156,6 +158,10 @@ Pebble.addEventListener("showConfiguration", function() {
 
    if (cfg_auto_close) {
       settings += "&ac=1";
+   }
+
+   if (cfg_wakeup_time >= 0) {
+      settings += "&wakeup=" + cfg_wakeup_time.toString(10);
    }
 
    Pebble.openURL("https://cdn.rawgit.com/faelys/pebble-health-export/v1.0/config.html" + settings);
@@ -218,7 +224,22 @@ Pebble.addEventListener("webviewclosed", function(e) {
       msg.cfgAutoClose = cfg_auto_close ? 1 : 0;
    }
 
-   console.log(cfg_sign_field ? "Signature enabled" : "Signature disabled");
+   if (configData.wakeupTime !== null) {
+      console.log("Received wakeupTime \"" + configData.wakeupTime + "\"");
+      var wakeupComponents = configData.wakeupTime.split(":");
+      if (wakeupComponents.length === 2) {
+         var wakeupH = parseInt(wakeupComponents[0], 10);
+         var wakeupM = parseInt(wakeupComponents[1], 10);
+         if (wakeupH >= 0 && wakeupH < 24 && wakeupM >= 0 && wakeupM < 60) {
+            cfg_wakeup_time = wakeupH * 60 + wakeupM;
+            localStorage.setItem("cfgWakeupTime", cfg_wakeup_time);
+         }
+         else
+            console.log("Invalid wakeupTime \"" + configData.wakeupTime + "\"");
+      }
+      else
+         console.log("Invalid wakeupTime \"" + configData.wakeupTime + "\"");
+   }
 
    if (configData.resend) {
       senders[0].abort();
