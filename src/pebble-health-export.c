@@ -29,6 +29,7 @@
 #define MSG_KEY_CFG_START	301
 #define MSG_KEY_CFG_END		302
 #define MSG_KEY_CFG_AUTO_CLOSE	310
+#define MSG_KEY_CFG_WAKEUP_TIME	320
 
 static Window *window;
 static TextLayer *modal_text_layer;
@@ -45,6 +46,7 @@ static bool sending_data = false;
 static bool cfg_auto_close = false;
 static bool auto_close = false;
 static bool configuring = false;
+static int cfg_wakeup_time = -1;
 
 static struct widget {
 	char		label[64];
@@ -469,6 +471,13 @@ handle_received_tuple(Tuple *tuple) {
 			close_app();
 		break;
 
+	    case MSG_KEY_CFG_WAKEUP_TIME:
+		cfg_wakeup_time = tuple_int(tuple);
+		persist_write_int(MSG_KEY_CFG_WAKEUP_TIME, cfg_wakeup_time + 1);
+		APP_LOG(APP_LOG_LEVEL_INFO,
+		    "wrote cfg_wakeup_time %i", cfg_wakeup_time);
+		break;
+
 	    case MSG_KEY_CFG_START:
 		APP_LOG(APP_LOG_LEVEL_INFO, "Starting configuration");
 		auto_close = false;
@@ -524,7 +533,10 @@ tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 static void
 init(void) {
 	cfg_auto_close = persist_read_bool(MSG_KEY_CFG_AUTO_CLOSE);
-	auto_close = cfg_auto_close;
+	cfg_wakeup_time = persist_read_int(MSG_KEY_CFG_WAKEUP_TIME) - 1;
+	APP_LOG(APP_LOG_LEVEL_INFO,
+	    "read cfg_wakeup_time %i", cfg_wakeup_time);
+	auto_close = (cfg_auto_close || launch_reason() == APP_LAUNCH_WAKEUP);
 
 	app_message_register_inbox_received(inbox_received_handler);
 	app_message_register_outbox_failed(outbox_failed_handler);
@@ -539,10 +551,33 @@ init(void) {
 	});
 	window_stack_push(window, true);
 	tick_timer_service_subscribe(SECOND_UNIT, &tick_handler);
+	wakeup_cancel_all();
 }
 
 static void deinit(void) {
 	window_destroy(window);
+
+	if (cfg_wakeup_time >= 0) {
+		WakeupId res;
+		time_t now = time(0);
+		time_t t = clock_to_timestamp(TODAY,
+		    cfg_wakeup_time / 60, cfg_wakeup_time % 60);
+
+		if (t - now > 6 * 86400)
+			t -= 6 * 86400;
+		else if (t - now <= 120)
+			t += 86400;
+
+		res = wakeup_schedule(t, 0, true);
+
+		if (res < 0)
+			APP_LOG(APP_LOG_LEVEL_ERROR,
+			    "wakeup_schedule(%" PRIi32 ", 0, true)"
+			    " returned %" PRIi32,
+			    t, res);
+	} else {
+		APP_LOG(APP_LOG_LEVEL_INFO, "No wakeup to setup");
+	}
 }
 
 int

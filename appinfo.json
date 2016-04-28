@@ -20,7 +20,8 @@
     "dataLine": 220,
     "cfgStart": 301,
     "cfgEnd": 302,
-    "cfgAutoClose": 310
+    "cfgAutoClose": 310,
+    "cfgWakeupTime": 320
   },
   "resources": {
     "media": []

@@ -233,6 +233,7 @@ Pebble.addEventListener("webviewclosed", function(e) {
          if (wakeupH >= 0 && wakeupH < 24 && wakeupM >= 0 && wakeupM < 60) {
             cfg_wakeup_time = wakeupH * 60 + wakeupM;
             localStorage.setItem("cfgWakeupTime", cfg_wakeup_time);
+            msg.cfgWakeupTime = cfg_wakeup_time;
          }
          else
             console.log("Invalid wakeupTime \"" + configData.wakeupTime + "\"");
