@@ -47,6 +47,7 @@ static bool cfg_auto_close = false;
 static bool auto_close = false;
 static bool configuring = false;
 static int cfg_wakeup_time = -1;
+static int32_t last_key = 0;
 
 static struct widget {
 	char		label[64];
@@ -83,8 +84,8 @@ update_half_progress(struct widget *widget) {
 
 	time_t t, now = time(0);
 	struct tm *tm;
-	int32_t last_key = (now + 59) / 60;
-	int32_t key_span = last_key - widget->first_key;
+	int32_t key_span = (last_key ? last_key : (now + 59) / 60)
+	    - widget->first_key;
 	int32_t keys_done = widget->current_key - widget->first_key + 1;
 	int32_t running_time = widget->start_time
 	    ? now - widget->start_time : 0;
@@ -96,7 +97,9 @@ update_half_progress(struct widget *widget) {
 	tm = localtime(&t);
 	strftime(widget->label, sizeof widget->label, "%F %H:%M", tm);
 
-	if (running_time > 0) {
+	if (last_key > 0 && widget->current_key == (uint32_t)last_key) {
+		snprintf(widget->rate, sizeof widget->rate, "DONE");
+	} else if (running_time > 0) {
 		int32_t i = ((widget->current_key - widget->first_key) * 60
 		    + running_time / 2) / running_time;
 		snprintf(widget->rate, sizeof widget->rate,
@@ -389,6 +392,8 @@ send_next_line(void) {
 	if (minute_index >= minute_data_size
 	    && !load_minute_data_page(minute_last)) {
 		sending_data = false;
+		last_key = phone.current_key;
+		display_dirty = true;
 		if (auto_close && web.current_key >= phone.current_key)
 			close_app();
 		return;
@@ -427,6 +432,7 @@ handle_last_sent(Tuple *tuple) {
 
 	if (!sending_data) {
 		sending_data = true;
+		last_key = 0;
 		send_next_line();
 	}
 }
