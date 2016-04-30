@@ -24,6 +24,7 @@
 #define MSG_KEY_MODAL_MESSAGE	120
 #define MSG_KEY_UPLOAD_DONE	130
 #define MSG_KEY_UPLOAD_START	140
+#define MSG_KEY_UPLOAD_FAILED	150
 #define MSG_KEY_DATA_KEY	210
 #define MSG_KEY_DATA_LINE	220
 #define MSG_KEY_CFG_START	301
@@ -467,6 +468,13 @@ handle_received_tuple(Tuple *tuple) {
 	    case MSG_KEY_UPLOAD_START:
 		web.first_key = tuple_uint(tuple);
 		web.start_time = time(0);
+		break;
+
+	    case MSG_KEY_UPLOAD_FAILED:
+		web.start_time = 0;
+		if (tuple->type == TUPLE_CSTRING)
+			snprintf(web.rate, sizeof web.rate,
+			    "%s", tuple->value->cstring);
 		break;
 
 	    case MSG_KEY_CFG_AUTO_CLOSE:

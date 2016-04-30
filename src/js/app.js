@@ -79,7 +79,10 @@ function uploadDone() {
    sendHead();
 }
 
-function uploadError() { console.log(this.statusText); }
+function uploadError() {
+   console.log(this.statusText);
+   Pebble.sendAppMessage({ "uploadFailed": this.statusText });
+}
 
 senders[0].addEventListener("load", uploadDone);
 senders[0].addEventListener("error", uploadError);

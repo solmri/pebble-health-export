@@ -16,6 +16,7 @@
     "modalMessage": 120,
     "uploadDone": 130,
     "uploadStart": 140,
+    "uploadFailed": 150,
     "dataKey": 210,
     "dataLine": 220,
     "cfgStart": 301,
