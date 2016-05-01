@@ -244,7 +244,7 @@
     if (initWakeupTime >= 0) {
       var wakeupMin = initWakeupTime % 60;
       document.getElementById("wakeupEnable").checked = true;
-      document.getElementById("wakeupTime").value = (initWakeupTime / 60).toString(10) + (wakeupMin >= 10 ? ":" : ":0") + wakeupMin.toString(10);
+      document.getElementById("wakeupTime").value = (initWakeupTime / 60 | 0).toString(10) + (wakeupMin >= 10 ? ":" : ":0") + wakeupMin.toString(10);
     } else {
       document.getElementById("wakeupEnable").checked = false;
     }
