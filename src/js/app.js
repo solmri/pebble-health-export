@@ -104,7 +104,7 @@ Pebble.addEventListener("ready", function() {
    cfg_sign_field_format = localStorage.getItem("cfgSignFieldFormat");
    cfg_sign_key = localStorage.getItem("cfgSignKey");
    cfg_sign_key_format = localStorage.getItem("cfgSignKeyFormat");
-   cfg_auto_close = localStorage.getItem("cfgAutoClose");
+   cfg_auto_close = (parseInt(localStorage.getItem("cfgAutoClose") || "0", 10)
    cfg_wakeup_time = parseInt(localStorage.getItem("cfgWakeupTime") || "-1", 10);
 
    if (!(cfg_bundle_max >= 1)) cfg_bundle_max = 1;
