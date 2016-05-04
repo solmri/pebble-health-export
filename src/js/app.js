@@ -171,12 +171,12 @@ Pebble.addEventListener("showConfiguration", function() {
 });
 
 Pebble.addEventListener("webviewclosed", function(e) {
-   var configData = JSON.parse(decodeURIComponent(e.response));
+   var configData = JSON.parse(e.response);
    var wasConfigured = (cfg_endpoint && cfg_data_field);
    var msg = { "cfgEnd": 1 };
 
    if (configData.url) {
-      cfg_endpoint = configData.url;
+      cfg_endpoint = decodeURIComponent(configData.url);
       localStorage.setItem("cfgEndpoint", cfg_endpoint);
    }
 
@@ -212,7 +212,7 @@ Pebble.addEventListener("webviewclosed", function(e) {
    }
 
    if (configData.signKey) {
-      cfg_sign_key = configData.signKey;
+      cfg_sign_key = decodeURIComponent(configData.signKey);
       localStorage.setItem("cfgSignKey", cfg_sign_key);
    }
 
