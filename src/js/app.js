@@ -25,6 +25,7 @@ var cfg_sign_key = "";
 var cfg_sign_key_format = "";
 var cfg_auto_close = false;
 var cfg_wakeup_time = -1;
+var cfg_extra_fields = [];
 
 var to_send = [];
 var senders = [new XMLHttpRequest(), new XMLHttpRequest()];
@@ -41,6 +42,15 @@ function sendPayload(payload) {
       sha.setHMACKey(cfg_sign_key, cfg_sign_key_format);
       sha.update(payload);
       data.append(cfg_sign_field, sha.getHMAC(cfg_sign_field_format));
+   }
+
+   if (cfg_extra_fields.length > 0) {
+      for (var i = 0; i < cfg_extra_fields.length; i += 1) {
+         var decoded = decodeURIComponent(cfg_extra_fields[i]).split("=");
+         var name = decoded.shift();
+         var value = decoded.join("=");
+         data.append(name, value);
+      }
    }
 
    i_sender = 1 - i_sender;
@@ -94,6 +104,9 @@ Pebble.addEventListener("ready", function() {
 
    var str_to_send = localStorage.getItem("toSend");
    to_send = str_to_send ? str_to_send.split("|") : [];
+
+   var str_extra_fields = localStorage.getItem("extraFields");
+   cfg_extra_fields = str_extra_fields ? str_extra_fields.split(",") : [];
 
    cfg_endpoint = localStorage.getItem("cfgEndpoint");
    cfg_data_field = localStorage.getItem("cfgDataField");
@@ -165,6 +178,10 @@ Pebble.addEventListener("showConfiguration", function() {
 
    if (cfg_wakeup_time >= 0) {
       settings += "&wakeup=" + cfg_wakeup_time.toString(10);
+   }
+
+   if (cfg_extra_fields.length > 0) {
+      settings += "&extra=" + cfg_extra_fields.join(",");
    }
 
    Pebble.openURL("https://cdn.rawgit.com/faelys/pebble-health-export/v1.0/config.html" + settings);
@@ -243,6 +260,13 @@ Pebble.addEventListener("webviewclosed", function(e) {
       }
       else
          console.log("Invalid wakeupTime \"" + configData.wakeupTime + "\"");
+   }
+
+   if (configData.extraFields !== null) {
+      console.log("received extraFields \"" + configData.extraFields + "\"");
+      cfg_extra_fields = configData.extraFields
+       ? configData.extraFields.split(",") : [];
+      localStorage.setItem("extraFields", cfg_extra_fields.join(","));
    }
 
    if (configData.resend) {
