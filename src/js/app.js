@@ -72,7 +72,6 @@ function sendHead() {
 function enqueue(key, line) {
    to_send.push(key + ";" + line);
    localStorage.setItem("toSend", to_send.join("|"));
-   localStorage.setItem("lastSent", key);
    if (to_send.length === 1) {
       Pebble.sendAppMessage({ "uploadStart": parseInt(key, 10) });
       sendHead();
@@ -85,6 +84,7 @@ function uploadDone() {
    }
    var sent_key = to_send.shift().split(";")[0];
    localStorage.setItem("toSend", to_send.join("|"));
+   localStorage.setItem("lastSent", key);
    Pebble.sendAppMessage({ "uploadDone": parseInt(sent_key, 10) });
    sendHead();
 }
